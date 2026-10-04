@@ -1,0 +1,8 @@
+import './globals.css';
+export const metadata = {
+  title: 'Mary’s Cat Café · Coffee, company & cats',
+  description: "Welcome to Mary's Cat Café. Meet Ginger, Kelly Gao and Traveler, and discover a little place for coffee, company and cats.",
+};
+export default function RootLayout({ children }) {
+  return <html lang="en"><body>{children}</body></html>;
+}
