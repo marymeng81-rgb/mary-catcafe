@@ -4,6 +4,8 @@ Requires Node.js 22 or newer. This package is independent of the website.
 
 For Railway GitHub deployments, use the repository's `/agent` root directory and `npm start`. The public health endpoint returns `agent is running`.
 
+The Railway service `agent` follows the GitHub `main` branch.
+
 From this directory:
 
 ```sh
