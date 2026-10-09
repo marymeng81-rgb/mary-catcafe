@@ -1,0 +1,5 @@
+Age: 45
+City: Auckland, New Zealand
+Interest: Playing with cats
+Interest: Shopping
+Interest: Cooking
