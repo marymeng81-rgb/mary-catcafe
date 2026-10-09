@@ -1,5 +1,6 @@
 'use client';
 import { useEffect } from 'react';
+import SiteHeader from './components/SiteHeader';
 export default function Home() {
   useEffect(() => {
     const lightbox = document.getElementById('lightbox');
@@ -30,12 +31,7 @@ export default function Home() {
     };
   }, []);
   return (<>
-<div className="announcement">A little coffee. A little company. A whole lot of cats. <span>♡</span></div>
-  <header className="header">
-    <a className="brand" href="#home" aria-label="Mary's Cat Café home"><svg viewBox="0 0 60 58" aria-hidden="true"><path d="M12 27 9 7l17 12h9L51 7l-3 22c8 22-7 26-18 26S5 49 12 27Z"/><path d="M19 32h3m16 0h3M28 39l3 3 3-3M8 38l11 3M7 46l12-1m22-4 12-3m-12 7 13 1"/></svg><span>Mary’s <b>cat café</b></span></a>
-    <nav aria-label="Main navigation"><a href="#about">Our story</a><a href="#cats">Meet the cats</a><a href="#gallery">Little moments</a></nav>
-    <a className="button small" href="#visit">Plan a visit <span>↗</span></a>
-  </header>
+<SiteHeader />
   <main>
     <section className="hero" id="home">
       <div className="hero-copy"><p className="eyebrow">WELCOME TO MARY’S CAT CAFÉ</p><h1>Your happy<br />little <em>purr</em> place.</h1><p className="intro">Slow down, settle in, and meet your new furry friends. A cosy corner for good coffee and even better company.</p><a className="button" href="#cats">Meet our cats <span>↗</span></a><div className="hero-note"><span className="heart">♡</span> Made with love by Mary. Approved by the cats.</div></div>
