@@ -7,3 +7,5 @@ out/
 
 .vercel
 .env*
+supabase/.temp/
+supabase/.branches/

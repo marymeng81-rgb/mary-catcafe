@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import SavedOpportunities from './SavedOpportunities';
 
 const activeLabel = { starting: 'Getting started', researching: 'Checking matches', searching: 'Searching for opportunities',
   reading_sources: 'Reading sources', checking_matches: 'Checking matches', checking_evidence: 'Checking matches and eligibility',
@@ -33,13 +34,16 @@ export default function Opportunities() {
   const [polling, setPolling] = useState(false);
   const jobRef = useRef(null);
   const mounted = useRef(true);
+  const adminSecret = useRef('');
+  const [reviewPassword, setReviewPassword] = useState('');
+  const adminHeaders = () => ({ 'x-site-password': adminSecret.current });
   const jobId = snapshot?.id;
   const running = snapshot?.status === 'running';
 
   useEffect(() => {
     mounted.current = true;
     const cancelOnLeave = () => {
-      if (jobRef.current) fetch(`/api/opportunities/jobs/${jobRef.current}/cancel`, { method: 'POST', keepalive: true, credentials: 'same-origin' }).catch(() => {});
+      if (jobRef.current) fetch(`/api/opportunities/jobs/${jobRef.current}/cancel`, { method: 'POST', headers: adminHeaders(), keepalive: true, credentials: 'same-origin' }).catch(() => {});
     };
     window.addEventListener('pagehide', cancelOnLeave);
     return () => { mounted.current = false; window.removeEventListener('pagehide', cancelOnLeave); cancelOnLeave(); };
@@ -53,7 +57,7 @@ export default function Opportunities() {
     const poll = async () => {
       controller = new AbortController();
       try {
-        const data = await api(`/api/opportunities/jobs/${jobId}`, { signal: controller.signal });
+        const data = await api(`/api/opportunities/jobs/${jobId}`, { headers: adminHeaders(), signal: controller.signal });
         if (disposed) return;
         setSnapshot(data);
         if (data.status !== 'running') {
@@ -75,13 +79,14 @@ export default function Opportunities() {
   async function start(event) {
     event.preventDefault();
     setStarting(true); setError('');
-    const suppliedPassword = password;
+    const suppliedPassword = password || adminSecret.current;
     setPassword('');
     try {
       const data = await api('/api/opportunities/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: suppliedPassword }) });
+      adminSecret.current = suppliedPassword; setReviewPassword(suppliedPassword);
       jobRef.current = data.id;
       if (!mounted.current) {
-        fetch(`/api/opportunities/jobs/${data.id}/cancel`, { method: 'POST', credentials: 'same-origin', keepalive: true }).catch(() => {});
+        fetch(`/api/opportunities/jobs/${data.id}/cancel`, { method: 'POST', headers: adminHeaders(), credentials: 'same-origin', keepalive: true }).catch(() => {});
         return;
       }
       setSnapshot({ ...data, phase: 'starting', progress: { searches: 0, pageReads: 0, elapsedSeconds: 0 }, toolCalls: [] });
@@ -93,22 +98,31 @@ export default function Opportunities() {
     if (!jobId) return;
     setCancelling(true); setError('');
     try {
-      const data = await api(`/api/opportunities/jobs/${jobId}/cancel`, { method: 'POST' });
+      const data = await api(`/api/opportunities/jobs/${jobId}/cancel`, { method: 'POST', headers: adminHeaders() });
       setSnapshot(data); setPolling(false); jobRef.current = null;
     } catch (failure) { setError(failure.message); }
     finally { setCancelling(false); }
   }
   const results = snapshot?.status === 'completed' ? snapshot.results : null;
   const calls = (snapshot?.toolCalls || []).filter(event => event.tool !== 'built_in_web_search');
+  async function unlockReview() {
+    setStarting(true); setError('');
+    try {
+      await api('/api/opportunities/new', { headers: { 'x-site-password': password } });
+      adminSecret.current = password; setReviewPassword(password); setPassword(''); setPasswordForm(false);
+    } catch (e) { setError(e.message); } finally { setStarting(false); }
+  }
 
   return <>
     <div className="opportunities-heading">
       <div><p className="eyebrow">A LITTLE SOMETHING FOR YOU</p><h1>New <em>possibilities.</em></h1><p className="intro">Competitions, programs and events chosen around your interests, with the details checked at the source.</p></div>
       <button className="button" disabled={starting || running} onClick={() => { setPasswordForm(true); setError(''); }}>Refresh <span aria-hidden="true">↻</span></button>
     </div>
+    <button className="quiet-button" onClick={() => { setPasswordForm(true); setError(''); }}>Review opportunities</button>
     {passwordForm && <form className="opportunity-password" onSubmit={start}>
       <div><h2>A little check before we begin.</h2><p>Enter your site password to refresh your opportunities.</p></div>
       <label htmlFor="site-password">Site password<input id="site-password" type="password" autoFocus autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} required maxLength={1024} disabled={starting} /></label>
+      <button className="button" type="button" disabled={starting || !password} onClick={unlockReview}>Unlock review</button>
       <div className="opportunity-actions"><button className="button" type="submit" disabled={starting || !password}>{starting ? 'Starting…' : 'Find opportunities'} <span aria-hidden="true">↗</span></button><button className="quiet-button" type="button" disabled={starting} onClick={() => { setPassword(''); setPasswordForm(false); }}>Close</button></div>
     </form>}
     {error && <div className="opportunity-error" role="alert"><strong>We couldn’t finish that request.</strong><p>{error}</p>{running && !polling && <button className="quiet-button" onClick={() => { setError(''); setPolling(true); }}>Retry progress check</button>}</div>}
@@ -118,7 +132,7 @@ export default function Opportunities() {
       <details className="activity-details"><summary>See searches and source links <span>{calls.length} updates</span></summary>{calls.length ? <ol className="activity-list">{calls.map((event, index) => <li key={`${index}-${event.elapsedSeconds}`}><time>{elapsed(event.elapsedSeconds)}</time><div><span className="activity-kind">{event.tool === 'open_page' ? 'Reading source' : 'Searching'}</span>{event.arguments?.query && <p>{event.arguments.query}</p>}{event.arguments?.url && <Source url={event.arguments.url}>{event.arguments.url}</Source>}<small>{event.status}</small></div></li>)}</ol> : <p className="muted">Waiting for the agent’s first activity.</p>}</details>
       {snapshot.status === 'cancelled' && <p className="muted">Your search has stopped. Refresh whenever you’re ready to start again.</p>}
     </section>}
-    {!snapshot && !passwordForm && <div className="opportunities-empty"><span aria-hidden="true">✳</span><h2>A little more to look forward to.</h2><p>Refresh to look for current opportunities around cats, shopping and cooking.</p><p className="privacy-note">Results stay on this page only and are not saved.</p></div>}
+    <SavedOpportunities password={reviewPassword} refreshToken={snapshot?.status === 'completed' ? snapshot.id : null} />
     {results && <section className="opportunity-results" aria-label="Search results">
       <div className="section-heading"><div><p className="eyebrow">CHECKED, NOT GUESSED</p><h2>{results.opportunities?.length ? <>Worth a <em>look.</em></> : 'No verified matches this time.'}</h2></div><p>Only opportunities supported by read sources.</p></div>
       <p className="results-summary">{results.summary}</p>
@@ -128,7 +142,7 @@ export default function Opportunities() {
         <div className="source-evidence">{(item.evidence || []).map((evidence, i) => <div className="evidence-entry" key={i}><span>{evidenceLabel[evidence.criterion] || 'Source check'}</span><blockquote>“{evidence.excerpt}”</blockquote><p>{evidence.explanation}</p><Source url={evidence.url} /></div>)}</div><div className="official-source"><Source url={item.officialUrl}>Read the official source</Source></div>
       </article>)}</div>
       {!!results.ruledOut?.length && <section className="ruled-out"><h3>What didn’t make the list.</h3><p className="muted">Closed, unsuitable or not verified with enough evidence.</p><ul>{results.ruledOut.map((item, index) => <li key={`${item.name}-${index}`}><div className="ruled-heading"><h4>{item.name}</h4><span>{item.decision === 'unverified' ? 'Not verified' : item.decision === 'closed' ? 'Closed' : 'Not eligible'}</span></div><p>{item.reason}</p><div className="ruled-links">{[...new Set(item.sourceUrls || [])].map(url => <Source url={url} key={url} />)}</div></li>)}</ul></section>}
-      <p className="privacy-note">Results are not saved. Refresh or leave this page to start fresh.</p>
+      <p className="privacy-note">Checked results are saved for review. Only approved opportunities appear publicly.</p>
     </section>}
   </>;
 }

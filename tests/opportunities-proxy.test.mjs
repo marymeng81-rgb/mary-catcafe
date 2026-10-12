@@ -6,7 +6,7 @@ const id = '11111111-1111-1111-1111-111111111111';
 const other = '22222222-2222-2222-2222-222222222222';
 const env = { SITE_PASSWORD: 'fixture-password', AGENT_SECRET: 'fixture-agent-secret', AGENT_URL: 'http://fixture-agent:8080' };
 const makeRequest = (path = '/api/opportunities/jobs', { method = 'POST', password = env.SITE_PASSWORD, cookie, origin = 'http://localhost:3000' } = {}) => new Request(`http://localhost:3000${path}`, {
-  method, headers: { origin, ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}), ...(cookie ? { cookie } : {}) },
+  method, headers: { origin, 'x-site-password': password, ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}), ...(cookie ? { cookie } : {}) },
   ...(method === 'POST' ? { body: JSON.stringify({ password }) } : {}),
 });
 function fixture() {
