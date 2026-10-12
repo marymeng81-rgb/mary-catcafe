@@ -21,7 +21,7 @@ On this PC, Node/npm are in the workspace’s portable runtime. If npm is not on
 $env:PATH = "$PWD\..\.tools\node-v22.23.3-win-x64;$env:PATH"
 ```
 
-The server loads this folder’s ignored `.env` file. Environment variables take precedence. Required slots: `OPENAI_API_KEY` and `AGENT_SECRET`. Optional: `PORT` (default 8080) and `OPENAI_MODEL` (default `gpt-4.1-mini`, must support Responses web search and structured outputs). No key is stored in source code.
+The server loads this folder’s ignored `.env` file. Environment variables take precedence. Required slots: `OPENAI_API_KEY` and `AGENT_SECRET`. Optional: `PORT` (default 8080), `OPENAI_MODEL` (research, default `gpt-4.1-mini`, must support Responses web search and structured outputs), and `OPENAI_REVIEW_MODEL` (evidence selection/review, default `gpt-4.1`). No key is stored in source code.
 
 Edit `interests.txt` to change the profile. It was copied from your original `interests.ext`; the original remains unchanged. The profile is sent to OpenAI for research. SDK tracing and response storage are disabled.
 
@@ -44,4 +44,6 @@ The four-minute wall-clock limit starts at job creation and includes final verif
 
 The researcher investigates official sources and returns structured candidates. Exact source excerpts are checked against successfully-read pages, then a separate SDK evidence reviewer checks the profile, age rules, location, other requirements, dates and open availability. Any missing or unsupported evidence excludes that candidate as **unverified**, not as definitely ineligible. Results contain zero to five opportunities plus exclusions and unresolved candidates. Quoted excerpts are capped at 25 words per source URL across the final accepted results. Automated semantic checks reduce mistakes but cannot guarantee an external page is accurate; follow the linked organizer’s rules before applying.
 
-Tests run offline with `npm test`. No live searches are triggered by the test suite. This package has not been deployed; Railway still serves the website until a separate deployment configuration change.
+Evidence assembly selects numbered source fragments from already-read pages; the server copies the excerpts instead of asking the model to reproduce quotations. Unknown fragment IDs supply no evidence and cannot pass the evidence gate. The semantic reviewer still checks the surrounding source text and all eligibility/availability requirements. Repeated reads reuse the current job's source content without consuming another read.
+
+Tests run offline with `npm test`. No live searches are triggered by the test suite. Railway serves this agent from the repository's `/agent` directory.

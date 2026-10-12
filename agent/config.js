@@ -13,6 +13,7 @@ export function loadConfig() {
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT must be a valid port.');
   return { apiKey: process.env.OPENAI_API_KEY, secret: process.env.AGENT_SECRET, port,
     model: process.env.OPENAI_MODEL || 'gpt-4.1-mini',
+    reviewModel: process.env.OPENAI_REVIEW_MODEL || 'gpt-4.1',
     supabaseUrl: process.env.SUPABASE_URL, supabaseKey: process.env.SUPABASE_SERVICE_KEY };
 }
 

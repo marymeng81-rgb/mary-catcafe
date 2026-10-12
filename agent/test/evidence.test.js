@@ -41,6 +41,17 @@ test('semantic reviewer veto returns fewer results and explains uncertainty with
   job.stop('cancelled', 'Done');
 });
 
+test('a price or a customer testimonial cannot establish age eligibility', () => {
+  const { job, item } = fixture();
+  const page = job.pages.get(item.officialUrl);
+  page.text += ' $125.00 visit here and she loved it!';
+  for (const excerpt of ['$125.00', 'visit here and she loved it!']) {
+    item.evidence[0].excerpt = excerpt;
+    assert.ok(checkEvidence(item, job).some(issue => /Age excerpt/.test(issue)));
+  }
+  job.stop('cancelled', 'Done');
+});
+
 test('accepted results require both mechanical evidence and reviewer approval', () => {
   const { job, item } = fixture();
   const results = assembleResults({ opportunities: [item], ruledOut: [], summary: 'Checked fixture.' }, [{ index: 0, verified: true, reason: 'Supported.' }], job);

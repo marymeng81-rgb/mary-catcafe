@@ -38,6 +38,9 @@ test('failed reads count; another official source can be read and only successfu
   assert.ok(result.text.includes('Registration is open'));
   assert.equal(result.links[0].url, 'https://example.com/register');
   assert.ok(job.pages.has('https://example.com/rules'));
+  const cached = await readPage('https://example.com/rules?utm_source=openai', job, () => { throw new Error('Already read'); });
+  assert.equal(cached.text, result.text);
+  assert.equal(job.pageReads, 2);
   job.stop('cancelled', 'Done');
 });
 

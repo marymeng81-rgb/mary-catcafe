@@ -77,6 +77,13 @@ export async function readPage(url, job, downloader = download) {
     job.log('open_page', { url }, 'blocked: search first');
     return { error: 'Search successfully before reading pages.' };
   }
+  let cached;
+  job.assertActive();
+  try { cached = job.pages.get(normalizeUrl(url)); } catch { /* Invalid URLs follow normal failure handling. */ }
+  if (cached) {
+    job.log('open_page', { url: cached.url }, 'cached');
+    return { ...cached, warning: 'Already read during this job. Use this evidence or follow a different official link; re-reading does not establish current booking dates.' };
+  }
   if (!job.reserve('pageReads', { url })) return { error: 'Page-read limit reached. Finish using already-read evidence.' };
   const signal = AbortSignal.any([job.signal, AbortSignal.timeout(Math.min(15_000, job.remainingMs))]);
   try {

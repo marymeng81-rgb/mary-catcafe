@@ -31,6 +31,9 @@ export function checkEvidence(item, job) {
     try { page = job.pages.get(normalizeUrl(evidence.url)); } catch { /* Invalid evidence URL. */ }
     const excerpt = normalizedText(evidence.excerpt);
     if (!page || !excerpt || !normalizedText(page.text).includes(excerpt)) issues.push(`Unverified ${evidence.criterion} excerpt.`);
+    if (evidence.criterion === 'age' && !/\b(adults?|ages?|years?|famil(?:y|ies)|everyone|children|kids|wh[aā]nau|\d+\+)\b/i.test(excerpt)) {
+      issues.push('Age excerpt does not state an age or public/family entry rule; prices and testimonials are not age evidence.');
+    }
     if (page) wordsByUrl.set(page.url, (wordsByUrl.get(page.url) || 0) + excerpt.split(/\s+/).length);
   }
   if ([...wordsByUrl.values()].some(count => count > 25)) issues.push('Excerpts exceed 25 words from one source for this item.');
