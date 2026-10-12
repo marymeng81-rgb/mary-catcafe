@@ -6,6 +6,8 @@ For Railway GitHub deployments, use the repository's `/agent` root directory and
 
 The Railway service `agent` follows the GitHub `main` branch.
 
+Final checked opportunities are saved by `update_site` to Supabase `opportunities` with status `new`. Set server-only `SUPABASE_URL` and `SUPABASE_SERVICE_KEY`. A unique URL prevents duplicate inserts; existing rows are left unchanged. Every save or duplicate skip is printed. Returned search results keep their existing shape.
+
 From this directory:
 
 ```sh

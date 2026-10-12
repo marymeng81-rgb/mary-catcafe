@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { readProfile } from './config.js';
 import { readPage } from './pages.js';
 import { outputSchema, checkEvidence, assembleResults } from './evidence.js';
+import { saveResults } from './update-site.js';
 
 const instructions = `You find up to FIVE CURRENT competitions, programs, and events matching the supplied profile.
 Read the profile exactly. Never assume school, student status, qualifications, experience, gender, citizenship, legal residency, disability, or membership. A city is not proof of citizenship or formal residency.
@@ -104,6 +105,6 @@ Also review definitiveRejections: verified=true only when official successfully-
         rejectionReviews: z.array(z.object({ index: z.number().int(), verified: z.boolean(), reason: z.string() })) }) });
     const review = await runner.run(reviewer, JSON.stringify({ today: date, profile, candidates: readable, definitiveRejections, pages }), { signal: job.signal, maxTurns: 1 });
     job.assertActive();
-    return assembleResults(draft, review.finalOutput.reviews, job, review.finalOutput.rejectionReviews);
+    return saveResults(config, job, assembleResults(draft, review.finalOutput.reviews, job, review.finalOutput.rejectionReviews));
   };
 }

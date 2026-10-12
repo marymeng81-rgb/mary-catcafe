@@ -12,7 +12,8 @@ export function loadConfig() {
   const port = Number(process.env.PORT || 8080);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT must be a valid port.');
   return { apiKey: process.env.OPENAI_API_KEY, secret: process.env.AGENT_SECRET, port,
-    model: process.env.OPENAI_MODEL || 'gpt-4.1-mini' };
+    model: process.env.OPENAI_MODEL || 'gpt-4.1-mini',
+    supabaseUrl: process.env.SUPABASE_URL, supabaseKey: process.env.SUPABASE_SERVICE_KEY };
 }
 
 export function readProfile() {
