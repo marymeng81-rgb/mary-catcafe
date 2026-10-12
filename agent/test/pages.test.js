@@ -4,6 +4,11 @@ import { Job } from '../jobs.js';
 import { htmlText, isPublicAddress, normalizeUrl, readPage } from '../pages.js';
 
 const quiet = () => new Job({ logger: () => {} });
+test('tracking tags share the same evidence URL while functional parameters remain distinct', () => {
+  assert.equal(normalizeUrl('https://example.com/event?utm_source=openai&fbclid=tag#tickets'), 'https://example.com/event');
+  assert.equal(normalizeUrl('https://example.com/event?ticket=adult&utm_campaign=search'), 'https://example.com/event?ticket=adult');
+  assert.notEqual(normalizeUrl('https://example.com/event?ticket=adult'), normalizeUrl('https://example.com/event?ticket=child'));
+});
 test('public URL validation blocks private/reserved IPv4, IPv6 and mapped addresses', () => {
   for (const ip of ['127.0.0.1','10.0.0.2','192.168.1.1','169.254.169.254','100.64.1.1','::1','fc00::1','fe80::1','::ffff:127.0.0.1']) assert.equal(isPublicAddress(ip), false, ip);
   assert.equal(isPublicAddress('1.1.1.1'), true);

@@ -78,16 +78,33 @@ export function createResearcher(config, { runner: injectedRunner, pageReader = 
     const result = await runner.run(agent, `Today in Auckland: ${date}.\nProfile from interests.txt:\n${profile}\nFind current opportunities now.`, { signal: job.signal, maxTurns: 36 });
     job.assertActive();
     let draft = outputSchema.parse(result.finalOutput);
-    // Give the researcher one opportunity to repair missing or fabricated excerpts with remaining tools.
-    const problems = draft.opportunities.map((item, index) => ({ index, name: item.name, issues: checkEvidence(item, job) })).filter(item => item.issues.length);
-    const investigateMore = draft.opportunities.length === 0 && job.searches < 6 && job.pageReads < 12;
-    if ((problems.length || investigateMore) && job.remainingMs > 60_000) {
-      const repair = await runner.run(agent, [...result.history, { role: 'user', content: `Evidence gate found these problems: ${JSON.stringify(problems)}. Remaining searches: ${10 - job.searches}; reads: ${15 - job.pageReads}; time: ${Math.floor(job.remainingMs / 1000)} seconds. Investigate missing evidence before deciding. Do not just re-read the same page; follow official rules/booking links or search for an alternative official source. If no good shortlist exists, try targeted searches for Auckland adult cooking classes, cat events or community programs, and shopping markets with current registration or explicit walk-in rules. Fix exact excerpts to at most 25 words per source URL, or mark unresolved items unverified. Never fill gaps by invention. Return the full corrected result.` }],
+    // Continue repairing while evidence is missing and useful tool/time budget remains.
+    let history = result.history;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const problems = draft.opportunities.map((item, index) => ({ index, name: item.name, issues: checkEvidence(item, job) })).filter(item => item.issues.length);
+      const investigateMore = draft.opportunities.length === 0;
+      if (!(problems.length || investigateMore) || job.remainingMs <= 60_000 || (job.searches >= 10 && job.pageReads >= 15)) break;
+      const repair = await runner.run(agent, [...history, { role: 'user', content: `Evidence gate found these problems: ${JSON.stringify(problems)}. Remaining searches: ${10 - job.searches}; reads: ${15 - job.pageReads}; time: ${Math.floor(job.remainingMs / 1000)} seconds. Investigate missing evidence before deciding. Do not just re-read the same page; follow official rules/booking links or search for an alternative official source. If no good shortlist exists, try targeted searches for Auckland adult cooking classes, cat events or community programs, and shopping markets with current registration or explicit walk-in rules. Fix exact excerpts to at most 25 words per source URL, or mark unresolved items unverified. Never fill gaps by invention. Return the full corrected result.` }],
         { signal: job.signal, maxTurns: 14 });
       draft = outputSchema.parse(repair.finalOutput);
+      history = repair.history;
     }
     job.assertActive();
     job.phase = 'checking_evidence';
+    // Research prose can paraphrase evidence or omit required categories. Reconstruct
+    // exact excerpts from already-read pages before rejecting those candidates.
+    if (draft.opportunities.some(item => checkEvidence(item, job).length) && job.remainingMs > 35_000) {
+      const extractor = new Agent({ name: 'Exact source evidence assembler', model: config.model, modelSettings,
+        instructions: `Repair the supplied candidate evidence using ONLY successfully-read pages. No outside knowledge, no tools, no assumptions.
+For each candidate, copy very short EXACT substrings from the read page text for all four criteria: age, location, availability, other_requirements. Use at most 25 quoted words total per source URL across candidates. Explain each excerpt in your own words separately.
+Check the complete surrounding text; do not quote a past or closed event as current. Only organizer-controlled sources count. Keep functional booking parameters in URLs; do not invent pages.
+Every included opportunity must have all four criteria actually supported, fit the profile, and have current application/registration/walk-in availability. A date alone, an unread calendar, or missing age rules is insufficient.
+Use readable source URLs exactly as supplied. If evidence does not establish a criterion, move the candidate to ruledOut as unverified with the specific missing evidence. Never fabricate quotes or accept an unsupported candidate.
+Return the full schema with repaired opportunities and all existing exclusions.`, outputType: outputSchema });
+      const repaired = await runner.run(extractor, JSON.stringify({ today: date, profile, draft, pages: [...job.pages.values()] }), { signal: job.signal, maxTurns: 1 });
+      draft = outputSchema.parse(repaired.finalOutput);
+      job.assertActive();
+    }
     const readable = draft.opportunities.map((item, index) => ({ index, item, issues: checkEvidence(item, job) })).filter(candidate => !candidate.issues.length);
     const definitiveRejections = draft.ruledOut.map((item, index) => ({ index, item })).filter(({ item }) => item.decision !== 'unverified');
     if (!readable.length && !definitiveRejections.length) return assembleResults(draft, [], job);

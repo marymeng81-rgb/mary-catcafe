@@ -3,6 +3,22 @@ import assert from 'node:assert/strict';
 import { RunContext } from '@openai/agents';
 import { createResearcher } from '../research.js';
 import { Job } from '../jobs.js';
+test('missing evidence receives bounded repair and exact-source extraction before rejection', async () => {
+  const job = new Job({ durationMs: 180_000, logger: () => {} });
+  const names = [];
+  const candidate = { name: 'Fixture', kind: 'event', officialUrl: 'https://example.com/rules', organizer: 'Fixture', location: 'Auckland', whyItFits: 'Cooking', availability: 'Open', eligibility: 'Adults', officialSourceReason: 'Organizer', evidence: [] };
+  const runner = { async run(agent) {
+    names.push(agent.name);
+    if (agent.name === 'Exact source evidence assembler') return { finalOutput: { opportunities: [], ruledOut: [{ name: 'Fixture', reason: 'No read evidence.', decision: 'unverified', sourceUrls: [] }], summary: '' } };
+    return { finalOutput: { opportunities: [candidate], ruledOut: [], summary: '' }, history: [] };
+  } };
+  const results = await createResearcher({ apiKey: 'fixture', model: 'gpt-4.1-mini' }, { runner })(job);
+  assert.equal(results.opportunities.length, 0);
+  assert.equal(names.filter(name => name === 'Exact source evidence assembler').length, 1);
+  assert.equal(names.length, 5);
+  assert.equal(results.ruledOut[0].decision, 'unverified');
+  job.stop('cancelled', 'Done');
+});
 
 test('SDK search wrapper forces the built-in tool once, disables retries, and logs its call', async () => {
   const calls = [];

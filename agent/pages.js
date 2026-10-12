@@ -14,6 +14,10 @@ export function normalizeUrl(value) {
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password ||
       (url.port && !['80', '443'].includes(url.port))) throw new Error('Only public HTTP(S) pages on standard ports are allowed.');
   url.hash = '';
+  // Tracking tags do not change the official page's identity. Preserve functional query parameters.
+  for (const key of [...url.searchParams.keys()]) {
+    if (/^utm_/i.test(key) || ['gclid', 'fbclid', 'msclkid'].includes(key.toLowerCase())) url.searchParams.delete(key);
+  }
   return url.href;
 }
 
